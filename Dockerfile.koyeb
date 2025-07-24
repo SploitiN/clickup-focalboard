@@ -1,0 +1,27 @@
+# Stage 1: Build
+FROM node:16 AS builder
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y build-essential git wget unzip
+
+RUN git clone https://github.com/mattermost/focalboard.git .
+
+WORKDIR /app/webapp
+RUN npm install && npm run build
+
+# Stage 2: Runtime
+FROM golang:1.18
+
+WORKDIR /app
+
+COPY --from=builder /app /app
+
+RUN go build -o focalboard-server ./server
+
+# Add a basic config.json
+COPY docker/config.json /app/config.json
+
+EXPOSE 8000
+
+CMD ["./focalboard-server", "--config", "/app/config.json"]
